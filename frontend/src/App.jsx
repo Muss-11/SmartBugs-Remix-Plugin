@@ -7,12 +7,17 @@ const client = createClient();
 
 function App() {
   const [status, setStatus] = useState("In attesa di connessione...");
+  const [isConnected, setIsConnected] = useState(false);
+  const [currentFile, setCurrentFile] = useState(null);
+  const [sourceCode, setSourceCode] = useState("");
+  const [analyzeStatus, setAnalyzeStatus] = useState("");
 
   useEffect(() => {
     const initClient = async () => {
       try {
         await client.onload();
         setStatus("Connesso a Remix IDE!");
+        setIsConnected(true);
       } catch (error) {
         console.error("Errore:", error);
         setStatus("Non connesso a Remix.");
@@ -20,6 +25,43 @@ function App() {
     };
     initClient();
   }, []);
+
+  const handleAnalyze = async () => {
+    setAnalyzeStatus("Lettura del file in corso...");
+    setSourceCode("");
+
+    try {
+      // 1. Recupera il path del file attualmente aperto nell'editor
+      const path = await client.call("fileManager", "getCurrentFile");
+
+      if (!path) {
+        setAnalyzeStatus("Nessun file aperto nell'editor.");
+        return;
+      }
+
+      if (!path.endsWith(".sol")) {
+        setAnalyzeStatus(`Il file attivo (${path}) non è un file Solidity.`);
+        return;
+      }
+
+      // 2. Legge il contenuto del file
+      const content = await client.call("fileManager", "readFile", path);
+
+      setCurrentFile(path);
+      setSourceCode(content);
+      setAnalyzeStatus(
+        `File letto correttamente: ${path} (${content.length} caratteri).`,
+      );
+
+      // Qui, in Fase 2, invieremo "content" al backend Node.js
+      console.log("Codice Solidity estratto:", content);
+    } catch (error) {
+      console.error("Errore durante la lettura del file:", error);
+      setAnalyzeStatus(
+        "Errore durante la lettura del file. Controlla la console.",
+      );
+    }
+  };
 
   return (
     <div className="app-container">
@@ -33,10 +75,35 @@ function App() {
 
       <button
         className="analyze-btn"
-        onClick={() => alert("Presto leggeremo il codice!")}
+        onClick={handleAnalyze}
+        disabled={!isConnected}
       >
         Analizza Contratto
       </button>
+
+      {analyzeStatus && (
+        <div className="status-box" style={{ marginTop: "15px" }}>
+          <p>{analyzeStatus}</p>
+        </div>
+      )}
+
+      {currentFile && (
+        <div className="status-box" style={{ marginTop: "10px" }}>
+          <p>
+            <strong>File corrente:</strong> {currentFile}
+          </p>
+          <pre
+            style={{
+              maxHeight: "200px",
+              overflow: "auto",
+              whiteSpace: "pre-wrap",
+              fontSize: "0.8rem",
+            }}
+          >
+            {sourceCode}
+          </pre>
+        </div>
+      )}
     </div>
   );
 }
