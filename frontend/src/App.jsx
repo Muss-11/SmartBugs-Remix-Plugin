@@ -1,9 +1,15 @@
 import { useState, useEffect } from "react";
-import { createClient } from "@remixproject/plugin-webview";
+import {
+  connectToRemix,
+  extractCurrentSolidityFile,
+} from "./services/remixClient";
 import "./App.css";
 
-// Inizializza il client in modo sicuro
-const client = createClient();
+// Messaggi utente per i codici di errore lanciati da remixClient
+const ERROR_MESSAGES = {
+  NO_FILE_OPEN: "Nessun file aperto nell'editor.",
+  NOT_SOLIDITY_FILE: "Il file attivo non è un file Solidity (.sol).",
+};
 
 function App() {
   const [status, setStatus] = useState("In attesa di connessione...");
@@ -13,53 +19,43 @@ function App() {
   const [analyzeStatus, setAnalyzeStatus] = useState("");
 
   useEffect(() => {
-    const initClient = async () => {
+    const init = async () => {
       try {
-        await client.onload();
+        await connectToRemix();
         setStatus("Connesso a Remix IDE!");
         setIsConnected(true);
       } catch (error) {
-        console.error("Errore:", error);
+        console.error("Errore di connessione:", error);
         setStatus("Non connesso a Remix.");
       }
     };
-    initClient();
+    init();
   }, []);
 
   const handleAnalyze = async () => {
     setAnalyzeStatus("Lettura del file in corso...");
     setSourceCode("");
+    setCurrentFile(null);
 
     try {
-      // 1. Recupera il path del file attualmente aperto nell'editor
-      const path = await client.call("fileManager", "getCurrentFile");
-
-      if (!path) {
-        setAnalyzeStatus("Nessun file aperto nell'editor.");
-        return;
-      }
-
-      if (!path.endsWith(".sol")) {
-        setAnalyzeStatus(`Il file attivo (${path}) non è un file Solidity.`);
-        return;
-      }
-
-      // 2. Legge il contenuto del file
-      const content = await client.call("fileManager", "readFile", path);
+      const { path, content } = await extractCurrentSolidityFile();
 
       setCurrentFile(path);
       setSourceCode(content);
       setAnalyzeStatus(
-        `File letto correttamente: ${path} (${content.length} caratteri).`,
+        `File letto correttamente: ${path} (${content.length} caratteri).`
       );
 
       // Qui, in Fase 2, invieremo "content" al backend Node.js
       console.log("Codice Solidity estratto:", content);
     } catch (error) {
-      console.error("Errore durante la lettura del file:", error);
-      setAnalyzeStatus(
-        "Errore durante la lettura del file. Controlla la console.",
-      );
+      const message =
+        ERROR_MESSAGES[error.message] ||
+        "Errore durante la lettura del file. Controlla la console.";
+      setAnalyzeStatus(message);
+      if (!ERROR_MESSAGES[error.message]) {
+        console.error("Errore durante la lettura del file:", error);
+      }
     }
   };
 
