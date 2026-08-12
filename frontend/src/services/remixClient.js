@@ -23,8 +23,15 @@ export async function connectToRemix() {
  * @returns {Promise<string|null>} path del file, o null se nessun file è aperto
  */
 export async function getCurrentFilePath() {
-  const path = await client.call("fileManager", "getCurrentFile");
-  return path || null;
+  try {
+    const path = await client.call("fileManager", "getCurrentFile");
+    return path || null;
+  } catch (error) {
+    // Remix rigetta la chiamata (invece di restituire null/undefined)
+    // quando non c'è nessun file attualmente aperto nell'editor.
+    console.debug("getCurrentFile ha fallito, presumo nessun file aperto:", error);
+    return null;
+  }
 }
 
 /**
