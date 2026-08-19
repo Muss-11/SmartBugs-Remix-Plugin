@@ -3,6 +3,7 @@ import {
   connectToRemix,
   extractCurrentSolidityFile,
 } from "./services/remixClient";
+import { sendContractToBackend } from "./services/backendClient";
 import "./App.css";
 
 // Messaggi utente per i codici di errore lanciati da remixClient
@@ -43,18 +44,23 @@ function App() {
       setCurrentFile(path);
       setSourceCode(content);
       setAnalyzeStatus(
-        `File letto correttamente: ${path} (${content.length} caratteri).`
+        `File letto correttamente: ${path} (${content.length} caratteri). Invio al backend in corso...`
       );
 
-      // Qui, in Fase 2, invieremo "content" al backend Node.js
-      console.log("Codice Solidity estratto:", content);
+      const { filename } = await sendContractToBackend(path, content);
+
+      setAnalyzeStatus(
+        `File inviato e salvato sul backend come "${filename}".`
+      );
     } catch (error) {
-      const message =
-        ERROR_MESSAGES[error.message] ||
-        "Errore durante la lettura del file. Controlla la console.";
+      // Se è un codice noto lanciato da remixClient (es. NO_FILE_OPEN), mostro il messaggio dedicato.
+      // Altrimenti (es. errore di rete verso il backend) mostro direttamente error.message,
+      // che sia backendClient che il browser (es. "Failed to fetch") popolano in modo leggibile.
+      const knownMessage = ERROR_MESSAGES[error.message];
+      const message = knownMessage || error.message || "Errore imprevisto. Controlla la console.";
       setAnalyzeStatus(message);
-      if (!ERROR_MESSAGES[error.message]) {
-        console.error("Errore durante la lettura del file:", error);
+      if (!knownMessage) {
+        console.error("Errore durante l'analisi:", error);
       }
     }
   };
