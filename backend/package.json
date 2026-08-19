@@ -1,0 +1,16 @@
+{
+  "name": "smartbugs-remix-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Server locale che riceve codice Solidity dal plugin frontend e lo prepara per l'analisi SmartBugs.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  }
+}
