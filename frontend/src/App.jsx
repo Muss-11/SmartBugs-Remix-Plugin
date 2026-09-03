@@ -3,13 +3,24 @@ import {
   connectToRemix,
   extractCurrentSolidityFile,
 } from "./services/remixClient";
-import { sendContractToBackend } from "./services/backendClient";
+import {
+  sendContractToBackend,
+  analyzeContract,
+} from "./services/backendClient";
 import "./App.css";
 
-// Messaggi utente per i codici di errore lanciati da remixClient
 const ERROR_MESSAGES = {
   NO_FILE_OPEN: "Nessun file aperto nell'editor.",
   NOT_SOLIDITY_FILE: "Il file attivo non è un file Solidity (.sol).",
+};
+
+// Mappa impact SmartBugs/Slither -> classe CSS per il colore del badge
+const IMPACT_CLASS = {
+  High: "badge-high",
+  Medium: "badge-medium",
+  Low: "badge-low",
+  Informational: "badge-info",
+  Optimization: "badge-optimization",
 };
 
 function App() {
@@ -18,6 +29,8 @@ function App() {
   const [currentFile, setCurrentFile] = useState(null);
   const [sourceCode, setSourceCode] = useState("");
   const [analyzeStatus, setAnalyzeStatus] = useState("");
+  const [findings, setFindings] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -37,6 +50,7 @@ function App() {
     setAnalyzeStatus("Lettura del file in corso...");
     setSourceCode("");
     setCurrentFile(null);
+    setFindings(null);
 
     try {
       const { path, content } = await extractCurrentSolidityFile();
@@ -44,20 +58,34 @@ function App() {
       setCurrentFile(path);
       setSourceCode(content);
       setAnalyzeStatus(
-        `File letto correttamente: ${path} (${content.length} caratteri). Invio al backend in corso...`
+        `File letto correttamente: ${path} (${content.length} caratteri). Invio al backend in corso...`,
       );
 
       const { filename } = await sendContractToBackend(path, content);
 
       setAnalyzeStatus(
-        `File inviato e salvato sul backend come "${filename}".`
+        `File salvato come "${filename}". Analisi SmartBugs in corso (può richiedere qualche minuto)...`,
+      );
+      setIsAnalyzing(true);
+
+      const result = await analyzeContract(filename);
+
+      setIsAnalyzing(false);
+      setFindings(result.findings);
+
+      const count = result.findings?.findings?.length ?? 0;
+      setAnalyzeStatus(
+        result.findings
+          ? `Analisi completata: ${count} segnalazion${count === 1 ? "e" : "i"} trovat${count === 1 ? "a" : "e"}.`
+          : "Analisi completata, ma non è stato possibile leggere i risultati dettagliati.",
       );
     } catch (error) {
-      // Se è un codice noto lanciato da remixClient (es. NO_FILE_OPEN), mostro il messaggio dedicato.
-      // Altrimenti (es. errore di rete verso il backend) mostro direttamente error.message,
-      // che sia backendClient che il browser (es. "Failed to fetch") popolano in modo leggibile.
+      setIsAnalyzing(false);
       const knownMessage = ERROR_MESSAGES[error.message];
-      const message = knownMessage || error.message || "Errore imprevisto. Controlla la console.";
+      const message =
+        knownMessage ||
+        error.message ||
+        "Errore imprevisto. Controlla la console.";
       setAnalyzeStatus(message);
       if (!knownMessage) {
         console.error("Errore durante l'analisi:", error);
@@ -78,9 +106,9 @@ function App() {
       <button
         className="analyze-btn"
         onClick={handleAnalyze}
-        disabled={!isConnected}
+        disabled={!isConnected || isAnalyzing}
       >
-        Analizza Contratto
+        {isAnalyzing ? "Analisi in corso..." : "Analizza Contratto"}
       </button>
 
       {analyzeStatus && (
@@ -104,6 +132,35 @@ function App() {
           >
             {sourceCode}
           </pre>
+        </div>
+      )}
+
+      {findings?.findings?.length > 0 && (
+        <div className="findings-list">
+          {findings.findings.map((finding, index) => (
+            <div className="finding-card" key={index}>
+              <div className="finding-header">
+                <span
+                  className={`badge ${IMPACT_CLASS[finding.impact] || "badge-info"}`}
+                >
+                  {finding.impact}
+                </span>
+                <span className="finding-name">{finding.name}</span>
+                {finding.line != null && (
+                  <span className="finding-line">riga {finding.line}</span>
+                )}
+              </div>
+              <p className="finding-message">{finding.message}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {findings && findings.findings?.length === 0 && (
+        <div className="status-box" style={{ marginTop: "15px" }}>
+          <p>
+            Nessuna vulnerabilità segnalata da SmartBugs per questo contratto.
+          </p>
         </div>
       )}
     </div>

@@ -1,4 +1,5 @@
 import { spawn } from "child_process";
+import { readdir, readFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
 import { TEMP_DIR } from "../utils/tempFile.js";
@@ -17,6 +18,32 @@ const DEFAULT_TIMEOUT_SECONDS = Number(process.env.SMARTBUGS_TIMEOUT || 120);
 
 // Cartella dove SmartBugs scriverà i risultati grezzi di ogni run.
 const RESULTS_DIR = path.resolve("results");
+
+/**
+ * Cerca ricorsivamente un file chiamato "result.json" dentro una cartella.
+ *
+ * @param {string} dir
+ * @returns {Promise<string|null>} path assoluto del file trovato, o null
+ */
+async function findResultJson(dir) {
+  let entries;
+  try {
+    entries = await readdir(dir, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      const found = await findResultJson(fullPath);
+      if (found) return found;
+    } else if (entry.name === "result.json") {
+      return fullPath;
+    }
+  }
+  return null;
+}
 
 /**
  * Esegue SmartBugs su un file .sol già salvato in TEMP_DIR e attende il completamento.
@@ -45,6 +72,7 @@ export function runSmartBugsAnalysis(filename, options = {}) {
     String(timeoutSeconds),
     "--results",
     runResultsDir,
+    "--json", // senza questo flag SmartBugs NON scrive result.json
   ];
 
   return new Promise((resolve, reject) => {
@@ -55,7 +83,7 @@ export function runSmartBugsAnalysis(filename, options = {}) {
 
     const child = spawn(SMARTBUGS_CMD, args, {
       cwd: SMARTBUGS_CWD,
-      shell: false,
+      shell: useShell,
     });
 
     let stdout = "";
@@ -77,7 +105,7 @@ export function runSmartBugsAnalysis(filename, options = {}) {
       );
     });
 
-    child.on("close", (code) => {
+    child.on("close", async (code) => {
       if (code !== 0) {
         reject(
           new Error(
@@ -86,7 +114,26 @@ export function runSmartBugsAnalysis(filename, options = {}) {
         );
         return;
       }
-      resolve({ runId, resultsDir: runResultsDir, stdout, stderr });
+
+      let findings = null;
+      const resultJsonPath = await findResultJson(runResultsDir);
+      if (resultJsonPath) {
+        try {
+          const raw = await readFile(resultJsonPath, "utf-8");
+          findings = JSON.parse(raw);
+        } catch (parseError) {
+          console.warn(
+            `Trovato result.json ma non parsabile (${resultJsonPath}):`,
+            parseError.message,
+          );
+        }
+      } else {
+        console.warn(
+          `Nessun result.json trovato dentro ${runResultsDir}. Controlla resultsDir/stdout per debug.`,
+        );
+      }
+
+      resolve({ runId, resultsDir: runResultsDir, stdout, stderr, findings });
     });
   });
 }

@@ -29,9 +29,12 @@ router.post("/", async (req, res) => {
     const result = await runSmartBugsAnalysis(filename, { tool });
 
     res.status(200).json({
-      message: "Analisi completata.",
+      message: result.findings
+        ? "Analisi completata."
+        : "Analisi completata, ma non è stato possibile leggere result.json (controlla resultsDir/stdout per debug).",
       runId: result.runId,
       resultsDir: result.resultsDir,
+      findings: result.findings,
     });
   } catch (error) {
     console.error("Errore durante l'esecuzione di SmartBugs:", error);
