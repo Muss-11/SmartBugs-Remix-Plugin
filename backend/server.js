@@ -1,6 +1,8 @@
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import contractsRouter from "./src/routes/contracts.js";
+import analyzeRouter from "./src/routes/analyze.js";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -16,6 +18,7 @@ app.get("/api/health", (req, res) => {
 });
 
 app.use("/api/contracts", contractsRouter);
+app.use("/api/analyze", analyzeRouter);
 
 app.listen(PORT, () => {
   console.log(`Backend SmartBugs in ascolto su http://localhost:${PORT}`);

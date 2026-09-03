@@ -3,14 +3,6 @@ import { saveSolidityFile } from "../utils/tempFile.js";
 
 const router = Router();
 
-/**
- * POST /api/contracts
- * Body atteso: { path: string, content: string }
- *
- * Salva il codice Solidity ricevuto in un file temporaneo univoco
- * e restituisce il nome/percorso del file salvato, che verrà usato
- * in Fase 3 per lanciare l'analisi SmartBugs via Docker.
- */
 router.post("/", async (req, res) => {
   const { path: originalPath, content } = req.body ?? {};
 
@@ -29,7 +21,10 @@ router.post("/", async (req, res) => {
   }
 
   try {
-    const { filename, filePath } = await saveSolidityFile(originalPath, content);
+    const { filename, filePath } = await saveSolidityFile(
+      originalPath,
+      content,
+    );
 
     res.status(201).json({
       message: "File salvato correttamente.",

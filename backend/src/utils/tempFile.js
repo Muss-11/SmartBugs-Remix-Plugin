@@ -3,7 +3,6 @@ import path from "path";
 import { randomUUID } from "crypto";
 
 // Cartella dove vengono salvati temporaneamente i contratti ricevuti dal frontend.
-// In Fase 3 sarà questa la cartella montata nel container Docker di SmartBugs.
 const TEMP_DIR = path.resolve("temp");
 
 async function ensureTempDir() {
