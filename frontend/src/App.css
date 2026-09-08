@@ -83,10 +83,13 @@ h1 {
 }
 
 .finding-message {
-  margin: 0;
-  font-size: 0.85rem;
-  white-space: pre-wrap;
-  color: #ddd;
+  margin-top: 10px;
+  font-size: 0.9rem;
+  color: #cccccc;
+
+  overflow-wrap: break-word; /* Forza l'accapo sulle parole troppo lunghe */
+  word-break: break-word; /* Supporto aggiuntivo per i browser più vecchi */
+  white-space: pre-wrap; /* Rispetta gli accapo del testo originale ma wrappa se necessario */
 }
 
 .badge {
@@ -155,4 +158,19 @@ h1 {
   background-color: #222336;
   color: #777;
   cursor: not-allowed;
+}
+
+.finding-card {
+  background-color: #33344a;
+  border-left: 4px solid #555;
+  border-radius: 5px;
+  padding: 10px 14px;
+  box-sizing: border-box;
+  cursor: pointer; /* <-- AGGIUNTO */
+  transition: background-color 0.2s ease; /* <-- AGGIUNTO */
+}
+
+/* Effetto visivo al passaggio del mouse */
+.finding-card:hover {
+  background-color: #3f405c;
 }

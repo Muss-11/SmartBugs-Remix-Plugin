@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import {
   connectToRemix,
   extractCurrentSolidityFile,
+  highlightCode,
+  clearHighlight,
 } from "./services/remixClient";
 import {
   sendContractToBackend,
@@ -49,11 +51,21 @@ function App() {
     init();
   }, []);
 
+  // NUOVA FUNZIONE: Gestisce il click sulla singola vulnerabilità
+  const handleFindingClick = (finding) => {
+    if (currentFile && finding.line) {
+      highlightCode(currentFile, finding.line, finding.impact);
+    }
+  };
+
   const handleAnalyze = async () => {
     setAnalyzeStatus("Lettura del file in corso...");
     setSourceCode("");
     setCurrentFile(null);
     setFindings(null);
+
+    // Puliamo eventuali evidenziazioni di analisi precedenti
+    await clearHighlight();
 
     try {
       const { path, content } = await extractCurrentSolidityFile();
@@ -66,13 +78,13 @@ function App() {
 
       const { filename } = await sendContractToBackend(path, content);
 
-      // MODIFICA: Aggiorniamo il messaggio per includere il nome del tool scelto
+      // Aggiorniamo il messaggio per includere il nome del tool scelto
       setAnalyzeStatus(
         `File salvato come "${filename}". Analisi con ${selectedTool} in corso (può richiedere qualche minuto)...`,
       );
       setIsAnalyzing(true);
 
-      // MODIFICA: Passiamo selectedTool al client backend come secondo parametro
+      // Passiamo selectedTool al client backend come secondo parametro
       const result = await analyzeContract(filename, selectedTool);
 
       setIsAnalyzing(false);
@@ -108,7 +120,7 @@ function App() {
         </p>
       </div>
 
-      {/* NUOVO MENU A TENDINA */}
+      {/* MENU A TENDINA */}
       <div className="tool-selector">
         <label htmlFor="tool">Strumento di analisi: </label>
         <select
@@ -160,7 +172,11 @@ function App() {
       {findings?.findings?.length > 0 && (
         <div className="findings-list">
           {findings.findings.map((finding, index) => (
-            <div className="finding-card" key={index}>
+            <div
+              className="finding-card"
+              key={index}
+              onClick={() => handleFindingClick(finding)} // <-- EVENTO CLICK AGGIUNTO QUI
+            >
               <div className="finding-header">
                 <span
                   className={`badge ${IMPACT_CLASS[finding.impact] || "badge-info"}`}
