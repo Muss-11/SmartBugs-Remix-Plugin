@@ -122,3 +122,37 @@ h1 {
   background-color: #28a745;
   color: white;
 }
+
+.tool-selector {
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tool-selector label {
+  font-weight: bold;
+  font-size: 0.95rem;
+  white-space: nowrap; /* Impedisce al testo di andare a capo */
+}
+
+.tool-selector select {
+  background-color: #33344a;
+  color: white;
+  border: 1px solid #555;
+  padding: 10px;
+  border-radius: 5px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  flex-grow: 1;
+  min-width: 0; /* PERMETTE AL FLEXBOX DI RESTRINGERE IL MENU */
+  box-sizing: border-box;
+}
+
+.tool-selector select:disabled {
+  background-color: #222336;
+  color: #777;
+  cursor: not-allowed;
+}

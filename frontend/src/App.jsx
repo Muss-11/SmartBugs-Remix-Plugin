@@ -24,6 +24,9 @@ const IMPACT_CLASS = {
 };
 
 function App() {
+  // NUOVO STATO: impostiamo Slither come default all'avvio
+  const [selectedTool, setSelectedTool] = useState("slither");
+
   const [status, setStatus] = useState("In attesa di connessione...");
   const [isConnected, setIsConnected] = useState(false);
   const [currentFile, setCurrentFile] = useState(null);
@@ -63,12 +66,14 @@ function App() {
 
       const { filename } = await sendContractToBackend(path, content);
 
+      // MODIFICA: Aggiorniamo il messaggio per includere il nome del tool scelto
       setAnalyzeStatus(
-        `File salvato come "${filename}". Analisi SmartBugs in corso (può richiedere qualche minuto)...`,
+        `File salvato come "${filename}". Analisi con ${selectedTool} in corso (può richiedere qualche minuto)...`,
       );
       setIsAnalyzing(true);
 
-      const result = await analyzeContract(filename);
+      // MODIFICA: Passiamo selectedTool al client backend come secondo parametro
+      const result = await analyzeContract(filename, selectedTool);
 
       setIsAnalyzing(false);
       setFindings(result.findings);
@@ -101,6 +106,23 @@ function App() {
         <p>
           Stato: <strong>{status}</strong>
         </p>
+      </div>
+
+      {/* NUOVO MENU A TENDINA */}
+      <div className="tool-selector">
+        <label htmlFor="tool">Strumento di analisi: </label>
+        <select
+          id="tool"
+          value={selectedTool}
+          onChange={(e) => setSelectedTool(e.target.value)}
+          disabled={!isConnected || isAnalyzing}
+        >
+          <option value="slither">Slither (Consigliato, Veloce)</option>
+          <option value="mythril">Mythril</option>
+          <option value="securify">Securify</option>
+          <option value="oyente">Oyente</option>
+          <option value="manticore">Manticore</option>
+        </select>
       </div>
 
       <button
